@@ -5,8 +5,9 @@ from ipaddress import ip_address
 from enum import Enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Table, Column, LargeBinary
+from sqlalchemy import Table, Column, PrimaryKeyConstraint, Binary as sqla_binary
 from sqlalchemy import Integer, String, MetaData, distinct
+from sqlalchemy.dialects.mysql import VARBINARY as mysql_binary
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func, and_
 
@@ -61,50 +62,31 @@ class AccessLog:
 
 		default_bytes = 0b0 * 16
 
+		if 'mysql' == self.engine_session.bind.dialect.name:
+			Binary = mysql_binary
+		else:
+			Binary = sqla_binary
+
 		# logs tables
 		self.logs = Table(
 			self.db_prefix + 'access_logs',
 			metadata,
-			Column(
-				'id',
-				LargeBinary(16),
-				primary_key=True,
-				default=default_bytes
-			),
+			Column('id', Binary(16), default=default_bytes),
 			Column('creation_time', Integer, default=0),
 			Column('scope', String(self.scope_length)),
-			Column(
-				'remote_origin',
-				LargeBinary(16),
-				default=ip_address(default_bytes)
-			),
-			Column(
-				'subject_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
-			Column(
-				'object_id',
-				LargeBinary(16),
-				default=default_bytes
-			),
+			Column('remote_origin', Binary(16), default=ip_address(default_bytes).packed),
+			Column('subject_id', Binary(16), default=default_bytes),
+			Column('object_id', Binary(16), default=default_bytes),
+			PrimaryKeyConstraint('id'),
 		)
 
 		self.connection = self.engine.connect()
 
 		if install:
-			table_exists = self.engine.dialect.has_table(
-				self.engine,
-				self.db_prefix + 'access_logs'
-			)
-			if not table_exists:
-				metadata.create_all(self.engine)
+			self.logs.create(bind=self.engine, checkfirst=True)
 
 	def uninstall(self):
-		for table in [
-				self.logs,
-			]:
-			table.drop(self.engine)
+		self.logs.drop(self.engine)
 
 	# retrieve logs
 	def get_log(self, id):
