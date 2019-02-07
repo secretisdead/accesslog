@@ -56,7 +56,7 @@ class AccessLog:
 
 		self.remote_origin = remote_origin
 
-		self.scope_length = 16
+		self.scope_length = 64
 
 		metadata = MetaData()
 
