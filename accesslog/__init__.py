@@ -235,7 +235,7 @@ class AccessLog:
 			filter = {
 				'scopes': scope,
 				'created_after': start_time,
-				'remote_origins': remote_origin,
+				'with_remote_origins': remote_origin,
 			}
 			if amount <= self.count_logs(filter=filter):
 				return True
